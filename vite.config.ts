@@ -3,8 +3,7 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath, URL } from 'node:url';
 
-// SunoSuraksha — privacy-first, offline-capable sound awareness.
-// Model assets are bundled locally; no CDN fetches at inference time.
+// SunoSuraksha — offline machine-sound anomaly monitor. Fully client-side.
 export default defineConfig({
   plugins: [
     react(),
@@ -13,16 +12,13 @@ export default defineConfig({
       includeAssets: ['favicon.svg', 'robots.txt'],
       workbox: {
         // Cache the app shell and static assets for offline use.
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest,wasm,tflite,csv}'],
-        // Model + WASM assets are large; raise the cache cap so they
-        // can be precached when bundled in /public.
-        maximumFileSizeToCacheInBytes: 25 * 1024 * 1024,
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
       },
       manifest: {
-        name: 'SunoSuraksha — Sound Awareness',
+        name: 'SunoSuraksha — Machine Sound Monitor',
         short_name: 'SunoSuraksha',
         description:
-          'Privacy-first, offline-capable sound awareness for deaf and hard-of-hearing people. Audio classification runs locally in your browser.',
+          'Offline smart watch for machines: learns what normal sounds like and alarms instantly when something sounds wrong.',
         theme_color: '#0b1220',
         background_color: '#0b1220',
         display: 'standalone',
@@ -52,6 +48,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['lucide-react', '@mediapipe/tasks-audio'],
+    exclude: ['lucide-react'],
   },
 });
