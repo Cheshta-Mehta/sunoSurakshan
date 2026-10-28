@@ -1,23 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { DetectionEvent } from '@/types';
-import { clearEvents, loadEvents, saveEvents } from '@/lib/storage';
+import { useCallback, useState } from 'react';
+import type { AnomalyEvent } from '@/types';
+import { loadEvents, saveEvents } from '@/lib/storage';
 
-/** Timestamped local event history, persisted to localStorage (newest first). */
 export function useEventHistory() {
-  const [events, setEvents] = useState<DetectionEvent[]>(() => loadEvents());
-
-  useEffect(() => {
-    saveEvents(events);
-  }, [events]);
-
-  const addEvent = useCallback((event: DetectionEvent) => {
-    setEvents((prev) => [event, ...prev].slice(0, 200));
+  const [events, setEvents] = useState<AnomalyEvent[]>(loadEvents);
+  const addEvent = useCallback((e: AnomalyEvent) => {
+    setEvents((prev) => {
+      const next = [e, ...prev].slice(0, 200);
+      saveEvents(next);
+      return next;
+    });
   }, []);
-
   const clear = useCallback(() => {
-    clearEvents();
+    saveEvents([]);
     setEvents([]);
   }, []);
-
   return { events, addEvent, clear };
 }

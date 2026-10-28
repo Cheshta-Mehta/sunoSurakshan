@@ -55,6 +55,7 @@ export default {
       animation: {
         'pulse-ring': 'pulseRing 1.4s ease-out infinite',
         'border-flash': 'borderFlash 1s ease-in-out infinite alternate',
+        'alert-flash': 'alertFlash 0.7s ease-in-out infinite alternate',
         'fade-in': 'fadeIn 0.25s ease-out',
         'slide-up': 'slideUp 0.3s ease-out',
       },
@@ -67,6 +68,10 @@ export default {
         borderFlash: {
           '0%': { boxShadow: '0 0 0 0 rgba(239,68,68,0.6)' },
           '100%': { boxShadow: '0 0 40px 8px rgba(239,68,68,0.75)' },
+        },
+        alertFlash: {
+          '0%': { backgroundColor: '#dc2626' },
+          '100%': { backgroundColor: '#7f1d1d' },
         },
         fadeIn: {
           '0%': { opacity: '0' },
