@@ -1,40 +1,52 @@
-import type { AnomalyEvent, Settings } from '@/types';
+import type { AnomalyEvent, MachineProfile, Settings } from '@/types';
 
-const EVENTS_KEY = 'suno.machine.events.v1';
-const SETTINGS_KEY = 'suno.machine.settings.v1';
+const EVENTS_KEY = 'suno.machine.events.v2';
+const SETTINGS_KEY = 'suno.machine.settings.v2';
+const PROFILES_KEY = 'suno.machine.profiles.v1';
+const ACTIVE_KEY = 'suno.machine.active.v1';
 
-export const defaultSettings = (): Settings => ({ sensitivity: 6, soundAlarm: true, vibration: true });
+export const defaultSettings = (): Settings => ({
+  sensitivity: 6,
+  soundAlarm: true,
+  vibration: true,
+  strictMode: false,
+  calibrationSec: 3,
+});
 
-export function loadSettings(): Settings {
+function read<T>(key: string, fallback: T): T {
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    return raw ? { ...defaultSettings(), ...(JSON.parse(raw) as Partial<Settings>) } : defaultSettings();
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
-    return defaultSettings();
+    return fallback;
   }
 }
-
-export function saveSettings(s: Settings): void {
+function write(key: string, value: unknown): void {
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    localStorage.setItem(key, JSON.stringify(value));
   } catch {
     /* in-memory only */
   }
 }
 
-export function loadEvents(): AnomalyEvent[] {
-  try {
-    const raw = localStorage.getItem(EVENTS_KEY);
-    return raw ? (JSON.parse(raw) as AnomalyEvent[]) : [];
-  } catch {
-    return [];
-  }
-}
+export const loadSettings = (): Settings => ({ ...defaultSettings(), ...read<Partial<Settings>>(SETTINGS_KEY, {}) });
+export const saveSettings = (s: Settings) => write(SETTINGS_KEY, s);
 
-export function saveEvents(events: AnomalyEvent[]): void {
-  try {
-    localStorage.setItem(EVENTS_KEY, JSON.stringify(events.slice(0, 200)));
-  } catch {
-    /* ignore */
-  }
+export const loadEvents = (): AnomalyEvent[] => read<AnomalyEvent[]>(EVENTS_KEY, []);
+export const saveEvents = (e: AnomalyEvent[]) => write(EVENTS_KEY, e.slice(0, 200));
+
+export const defaultProfile = (): MachineProfile => ({
+  id: 'm-default',
+  name: 'Machine 1',
+  sector: 'factory',
+  baseline: null,
+  createdAt: new Date().toISOString(),
+});
+
+export function loadProfiles(): MachineProfile[] {
+  const p = read<MachineProfile[]>(PROFILES_KEY, []);
+  return p.length ? p : [defaultProfile()];
 }
+export const saveProfiles = (p: MachineProfile[]) => write(PROFILES_KEY, p);
+export const loadActiveId = (): string | null => read<string | null>(ACTIVE_KEY, null);
+export const saveActiveId = (id: string) => write(ACTIVE_KEY, id);

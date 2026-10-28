@@ -1,19 +1,20 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { AnomalyEvent } from '@/types';
 import { loadEvents, saveEvents } from '@/lib/storage';
 
 export function useEventHistory() {
   const [events, setEvents] = useState<AnomalyEvent[]>(loadEvents);
-  const addEvent = useCallback((e: AnomalyEvent) => {
-    setEvents((prev) => {
-      const next = [e, ...prev].slice(0, 200);
-      saveEvents(next);
-      return next;
-    });
-  }, []);
-  const clear = useCallback(() => {
-    saveEvents([]);
-    setEvents([]);
-  }, []);
-  return { events, addEvent, clear };
+
+  useEffect(() => {
+    saveEvents(events);
+  }, [events]);
+
+  const addEvent = useCallback((e: AnomalyEvent) => setEvents((prev) => [e, ...prev].slice(0, 200)), []);
+  const ack = useCallback(
+    (id: string) =>
+      setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, acknowledgedAt: new Date().toISOString() } : e))),
+    [],
+  );
+  const clear = useCallback(() => setEvents([]), []);
+  return { events, addEvent, ack, clear };
 }
