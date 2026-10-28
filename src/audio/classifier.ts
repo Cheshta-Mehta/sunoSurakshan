@@ -36,14 +36,14 @@ export interface ClassificationOutput {
   topCategories: Category[];
 }
 
-export async function classifyAudio(
+  export async function classifyAudio(
   samples: Float32Array,
   sampleRate: number,
   maxResults = 10,
   scoreThreshold = 0.01,
 ): Promise<ClassificationOutput> {
   const clf = await loadClassifier();
-  clf.setOptions({ maxResults, scoreThreshold });
+  await clf.setOptions({ maxResults, scoreThreshold });
 
   const processed = sampleRate === YAMNET_SAMPLE_RATE
     ? samples

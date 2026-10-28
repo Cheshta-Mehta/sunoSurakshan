@@ -66,6 +66,12 @@ export class AlarmSound {
     if (!AudioCtx) return;
 
     this.ctx = new AudioCtx();
+    // Resume immediately in case the context starts suspended (autoplay policy).
+    // This is triggered from a user-gesture context (alert appears after a user
+    // click, or the test-clip flow is user-initiated).
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => undefined);
+    }
     this.scheduleLoop(PRIORITY_BEEPS[priority], priority);
   }
 

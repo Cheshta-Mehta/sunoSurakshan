@@ -106,6 +106,10 @@ export function useLiveInference({ modelState, onResult }: UseLiveInferenceOptio
       const ctx = new AudioCtx();
       audioContextRef.current = ctx;
 
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+
       const source = ctx.createMediaStreamSource(stream);
       sourceNodeRef.current = source;
 
@@ -163,7 +167,12 @@ export function useLiveInference({ modelState, onResult }: UseLiveInferenceOptio
       };
 
       source.connect(processor);
-      processor.connect(ctx.destination);
+      // Connect to a zero-gain destination to keep the ScriptProcessor running
+      // without routing mic audio back to the speakers (which would cause feedback).
+      const mutedGain = ctx.createGain();
+      mutedGain.gain.value = 0;
+      processor.connect(mutedGain);
+      mutedGain.connect(ctx.destination);
 
       isPausedRef.current = false;
       setMicState('active');

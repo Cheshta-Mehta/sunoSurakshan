@@ -77,6 +77,12 @@ export default function App() {
     setActiveAlert(null);
   }, []);
 
+  const handleSilenceAlert = useCallback(() => {
+    // The AlarmSound instance is stopped inside AlertScreen; here we only
+    // signal the app that the audible alarm was silenced. The visual alert
+    // remains until dismissed.
+  }, []);
+
   const handleTestAlert = useCallback((event: DetectionEvent) => {
     addEvent(event);
     setActiveAlert(event);
@@ -164,6 +170,7 @@ export default function App() {
           soundAlarm={settings.soundAlarm}
           reducedMotion={reducedMotion}
           onDismiss={handleDismissAlert}
+          onSilence={handleSilenceAlert}
         />
       )}
 

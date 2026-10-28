@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { X, Vibrate, Volume2, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { X, Vibrate, Volume2, VolumeX, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { soundById } from '@/audio/soundCategories';
 import { getPriority, type AlertPriority } from '@/audio/alertEngine';
@@ -13,6 +13,7 @@ interface AlertScreenProps {
   soundAlarm: boolean;
   reducedMotion: boolean;
   onDismiss: () => void;
+  onSilence?: () => void;
 }
 
 const priorityBorder: Record<AlertPriority, string> = {
@@ -50,13 +51,15 @@ export function AlertScreen({
   soundAlarm,
   reducedMotion,
   onDismiss,
+  onSilence,
 }: AlertScreenProps) {
   const cat = event ? soundById(event.categoryId) : null;
   const priority = event ? getPriority(event.categoryId) : 'low';
   const alarmRef = useRef<AlarmSound | null>(null);
+  const [alarmSilenced, setAlarmSilenced] = useState(false);
 
   useEffect(() => {
-    if (!event || !soundAlarm) return;
+    if (!event || !soundAlarm || alarmSilenced) return;
     const alarm = new AlarmSound();
     alarmRef.current = alarm;
     alarm.start(priority);
@@ -64,7 +67,7 @@ export function AlertScreen({
       alarm.stop();
       alarmRef.current = null;
     };
-  }, [event, soundAlarm, priority]);
+  }, [event, soundAlarm, priority, alarmSilenced]);
 
   useEffect(() => {
     if (!event || !vibration || !('vibrate' in navigator)) return;
@@ -131,11 +134,25 @@ export function AlertScreen({
         {new Date(event.timestamp).toLocaleString()}
       </p>
 
-      <div className="mt-8 flex items-center gap-3">
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
         <Button size="xl" variant="danger" onClick={onDismiss} autoFocus>
           <X className="h-6 w-6" />
           Acknowledge & dismiss
         </Button>
+        {onSilence && soundAlarm && !alarmSilenced && (
+          <Button
+            size="lg"
+            variant="secondary"
+            onClick={() => {
+              alarmRef.current?.stop();
+              setAlarmSilenced(true);
+              onSilence();
+            }}
+          >
+            <VolumeX className="h-5 w-5" />
+            Silence alarm
+          </Button>
+        )}
       </div>
 
       <div className="mt-4 flex flex-col items-center gap-2 text-xs text-slate-500">
@@ -147,7 +164,11 @@ export function AlertScreen({
               <Vibrate className="h-4 w-4" /> Vibration active
             </span>
           ) : null}
-          {soundAlarm ? (
+          {soundAlarm && alarmSilenced ? (
+            <span className="ml-2 inline-flex items-center gap-1">
+              <VolumeX className="h-4 w-4" /> Alarm silenced
+            </span>
+          ) : soundAlarm ? (
             <span className="ml-2 inline-flex items-center gap-1">
               <Volume2 className="h-4 w-4" /> Beep alarm active
             </span>
