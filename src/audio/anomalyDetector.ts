@@ -1,25 +1,37 @@
 /**
- * Lightweight on-device anomaly detector.
- *
- * Each audio frame is turned into a feature vector: the average level (dB) in
- * NUM_BANDS log-spaced frequency bands + overall loudness (dB). During
- * calibration we learn the mean and spread of every feature. Afterwards, a
- * frame's anomaly score is how many "standard deviations" it sits away from the
- * learned normal. No model files, no network - just statistics.
+ * Lightweight on-device anomaly detector (per-band mean/std, z-score distance).
+ * Extras: baseline (de)serialisation, fault hints, silence detection.
  */
+import type { StoredBaseline } from '@/types';
 
 export const NUM_BANDS = 24;
 export const NUM_FEATURES = NUM_BANDS + 1; // + overall loudness
 const MIN_DB = -100;
-/** Floor for the spread so a very steady room doesn't make us hypersensitive. */
 const MIN_STD_DB = 3;
+/** Loudness this many sigmas BELOW normal = machine stopped / silent. */
+const SILENCE_Z = 3;
 
 export interface Baseline {
   mean: Float32Array;
   std: Float32Array;
 }
 
-/** FFT-bin edges for log-spaced bands between ~60 Hz and ~12 kHz. */
+export interface BandHint {
+  loHz: number;
+  hiHz: number;
+  z: number;
+}
+
+export const serializeBaseline = (b: Baseline): StoredBaseline => ({
+  mean: Array.from(b.mean),
+  std: Array.from(b.std),
+});
+
+export const deserializeBaseline = (o: StoredBaseline): Baseline => ({
+  mean: Float32Array.from(o.mean),
+  std: Float32Array.from(o.std),
+});
+
 export function bandEdges(sampleRate: number, fftSize: number): number[] {
   const binHz = sampleRate / fftSize;
   const maxBin = fftSize / 2 - 1;
@@ -87,4 +99,43 @@ export function anomalyScore(f: Float32Array, base: Baseline): number {
   const spectrumScore = Math.sqrt(sumSq / NUM_BANDS);
   const loudnessScore = Math.abs(f[NUM_BANDS] - base.mean[NUM_BANDS]) / base.std[NUM_BANDS];
   return Math.max(spectrumScore, loudnessScore);
+}
+
+/** True when the overall level is far BELOW normal (machine stopped). */
+export function isSilent(f: Float32Array, base: Baseline): boolean {
+  return (f[NUM_BANDS] - base.mean[NUM_BANDS]) / base.std[NUM_BANDS] < -SILENCE_Z;
+}
+
+/** The k bands that deviate most from normal, with their Hz range. */
+export function topBands(
+  f: Float32Array,
+  base: Baseline,
+  edges: number[],
+  sampleRate: number,
+  fftSize: number,
+  k = 3,
+): BandHint[] {
+  const binHz = sampleRate / fftSize;
+  return Array.from({ length: NUM_BANDS }, (_, i) => ({
+    z: (f[i] - base.mean[i]) / base.std[i],
+    loHz: Math.round(edges[i] * binHz),
+    hiHz: Math.round(edges[i + 1] * binHz),
+  }))
+    .sort((a, b) => Math.abs(b.z) - Math.abs(a.z))
+    .slice(0, k);
+}
+
+/** Indicative only: a hint about the TYPE of change, not a diagnosis. */
+export function describeHint(f: Float32Array, base: Baseline, hints: BandHint[]): string {
+  const h = hints[0];
+  if (!h) return 'Sound pattern differs from normal';
+  const c = (h.loHz + h.hiHz) / 2;
+  const kind =
+    c < 250
+      ? 'low-frequency rumble (imbalance / misalignment type)'
+      : c < 2000
+        ? 'mid-frequency band (looseness / knocking type)'
+        : 'high-frequency band (bearing whine / friction type)';
+  const dB = f[NUM_BANDS] - base.mean[NUM_BANDS];
+  return `${h.z > 0 ? 'Rise' : 'Drop'} at ${h.loHz}-${h.hiHz} Hz: ${kind}. Loudness ${dB >= 0 ? '+' : ''}${dB.toFixed(0)} dB vs normal.`;
 }
